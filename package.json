@@ -1,0 +1,26 @@
+{
+  "name": "node-fetch-har",
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=8.9.0"
+  },
+  "license": "MIT",
+  "files": [
+    "index.js"
+  ],
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint .",
+    "test": "npm run lint"
+  },
+  "peerDependencies": {
+    "node-fetch": "^1.7.0 || ^2.0.0"
+  },
+  "dependencies": {
+    "nanoid": "^2.0.3"
+  },
+  "devDependencies": {
+    "eslint": "^5.16.0",
+    "node-fetch": "^2.6.0"
+  }
+}
