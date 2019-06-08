@@ -22,12 +22,12 @@ function handleRequest(harEntryMap, request, options) {
   const url = new URL(options.url || options.href); // Depends on Node version?
 
   const now = Date.now();
-  const timestamps = {
-    start: now,
-    sent: now
-  };
   const entry = {
-    startedDateTime: new Date(timestamps.start).toISOString(),
+    _timestamps: {
+      start: now,
+      sent: now
+    },
+    startedDateTime: new Date(now).toISOString(),
     cache: {
       beforeRequest: null,
       afterRequest: null
@@ -61,7 +61,8 @@ function handleRequest(harEntryMap, request, options) {
   entry.request.headers = buildHeaders(options.headers);
 
   request.on("response", response => {
-    timestamps.firstByte = Date.now();
+    harEntryMap.set(requestId, entry);
+    entry._timestamps.firstByte = Date.now();
     entry.request.httpVersion = `HTTP/${response.httpVersion}`;
     entry.response.status = response.statusCode;
     entry.response.statusText = response.statusMessage;
@@ -73,29 +74,6 @@ function handleRequest(harEntryMap, request, options) {
       mimeType: response.headers["content-type"]
     };
     entry.response.redirectURL = response.headers.location || "";
-
-    let body = Buffer.from([]);
-    response.on("data", buffer => {
-      body = Buffer.concat([body, buffer]);
-    });
-
-    response.on("end", () => {
-      timestamps.received = Date.now();
-      entry.response.content.text = body.toString("base64");
-      entry.response.content.encoding = "base64";
-      entry.response.content.size = body.length;
-      entry.response.bodySize = body.length;
-      entry.timings.send = timestamps.sent - timestamps.start;
-      entry.timings.wait = timestamps.firstByte - timestamps.sent;
-      entry.timings.receive = timestamps.received - timestamps.firstByte;
-      entry.time =
-        entry.timings.blocked +
-        entry.timings.send +
-        entry.timings.wait +
-        entry.timings.receive;
-
-      harEntryMap.set(requestId, entry);
-    });
   });
 }
 
@@ -211,18 +189,59 @@ function withHar(baseFetch, { onHarEntry } = {}) {
       agent: getAgent(url)
     });
 
-    return baseFetch(input, options).then(response => {
-      const harEntry = harEntryMap.get(requestId);
-      harEntryMap.delete(requestId);
-      if (harEntry) {
-        response.harEntry = harEntry;
+    return baseFetch(input, options).then(
+      async response => {
+        const entry = harEntryMap.get(requestId);
+        harEntryMap.delete(requestId);
+        if (!entry) {
+          return response;
+        }
+
+        // We need to consume the decoded response in order to populate the
+        // `response.content` field.
+        const text = await response.text();
+
+        const { _timestamps: time } = entry;
+        time.received = Date.now();
+
+        // `clone()` is broken in `node-fetch` and results in a stalled Promise
+        // for responses above a certain size threshold. So construct a similar
+        // clone ourselves...
+        const Response = response.constructor;
+        const responseCopy = new Response(text, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers
+        });
+
+        // Response content info.
+        entry.response.content.text = text;
+        entry.response.content.size = text.length;
+        entry.response.bodySize = text.length;
+        // Finalize timing info.
+        entry.timings.send = time.sent - time.start;
+        entry.timings.wait = time.firstByte - time.sent;
+        entry.timings.receive = time.received - time.firstByte;
+        entry.time =
+          entry.timings.blocked +
+          entry.timings.send +
+          entry.timings.wait +
+          entry.timings.receive;
+
+        responseCopy.harEntry = entry;
+
         const callback = options.onHarEntry || onHarEntry;
         if (callback) {
-          callback(harEntry);
+          callback(entry);
         }
+
+        return responseCopy;
+      },
+      err => {
+        harEntryMap.delete(requestId);
+        throw err;
       }
-      return response;
-    });
+    );
   };
 }
 

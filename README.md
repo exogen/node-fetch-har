@@ -80,6 +80,24 @@ async function run() {
 }
 ```
 
+## Examples
+
+See the [demo](./demo/pages/index.js) for an example of exposing a SSR HAR
+log from Next.js.
+
+Run the demo like so:
+
+```console
+$ cd demo
+$ yarn
+$ yarn start
+```
+
+## TODO
+
+- Support for compression info.
+- Better tests with multiple response types, encodings, etc.
+
 [fetch]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API
 [node-fetch]: https://github.com/bitinn/node-fetch
 [har]: http://www.softwareishard.com/blog/har-12-spec/

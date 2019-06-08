@@ -10,7 +10,8 @@
   ],
   "main": "index.js",
   "scripts": {
-    "lint": "eslint .",
+    "lint": "eslint index.js test.js",
+    "start": "cd demo && npm start",
     "test": "npm run lint"
   },
   "peerDependencies": {
