@@ -4,6 +4,10 @@ A [Fetch API][fetch] wrapper designed to capture [HAR logs][har] for server
 requests made with [node-fetch][]. You can then expose this data to get
 visibility into what’s happening on the server.
 
+## Status
+
+🧪 EXPERIMENTAL! Please test thoroughly to make sure it works for your use case.
+
 ## Usage
 
 Setup:
