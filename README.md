@@ -14,7 +14,8 @@ Please test thoroughly to make sure it works for your use case.
 
 ## Usage
 
-Setup:
+The `withHar` function takes a base Fetch implementation such as `node-fetch`
+and returns a new one that captures HAR entries:
 
 ```js
 import { withHar } from "node-fetch-har";
@@ -106,6 +107,13 @@ $ yarn start
 - Populate the `cookies` property.
 - Support for compression info.
 - Better tests with multiple response types, encodings, etc.
+
+## How does it work?
+
+`node-fetch` supports a custom `agent` option. This can be used to capture very
+detailed information about the request all the way down to the socket level if
+desired. This library only uses it in a very simplistic way, to capture a few
+key timestamps and metadata like the HTTP version.
 
 [fetch]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API
 [node-fetch]: https://github.com/bitinn/node-fetch
