@@ -103,6 +103,7 @@ $ yarn start
 
 ## TODO
 
+- Populate the `cookies` property.
 - Support for compression info.
 - Better tests with multiple response types, encodings, etc.
 
