@@ -55,7 +55,6 @@ query IntrospectionQuery {
   };
 };
 
-// Do this in your `_app.js` to apply it to every page!
 export default function DemoPage({ harData }) {
   let harUrl;
   if (harData) {
