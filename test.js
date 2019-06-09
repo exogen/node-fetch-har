@@ -10,6 +10,9 @@ async function run() {
   });
 
   await fetch("https://httpstat.us/200", {
+    headers: {
+      Cookie: "value=5"
+    },
     onHarEntry: entry => {
       console.log("from onHarEntry:", entry);
     }
