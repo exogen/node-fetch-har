@@ -17,13 +17,13 @@ Please test thoroughly to make sure it works for your use case.
 ⚠️ **HAR files can contain sensitive information like cookies or passwords.** Since
 this library is for capturing what happens on the server, this is especially
 important because it is information that users can’t normally access in their
-own browser. Be careful about sharing this data. If you provide a method of
-exposing it, ensure it is only enabled for superusers or in secure environments.
+own browser. Be careful about sharing this data. If you provide a way to expose
+it, ensure it is only enabled for superusers or in secure environments.
+
+## Usage
 
 The `withHar` function takes a base Fetch implementation such as `node-fetch`
 and returns a new one that captures HAR entries:
-
-## Usage
 
 ```js
 import { withHar } from "node-fetch-har";
