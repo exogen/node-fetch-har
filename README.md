@@ -1,8 +1,8 @@
 # node-fetch-har
 
-A [Fetch API][fetch] wrapper designed to capture [HAR logs][har] for server
-requests made with [node-fetch][]. You can then expose this data to get
-visibility into what’s happening on the server.
+A [Fetch API][fetch] wrapper that captures [HAR logs][har] for server requests
+made with [node-fetch][]. You can then expose this data to get visibility into
+what’s happening on the server.
 
 ![Demo](./demo.gif)
 
