@@ -30,6 +30,7 @@
     "set-cookie-parser": "^2.3.5"
   },
   "devDependencies": {
+    "coveralls": "^3.0.4",
     "eslint": "^5.16.0",
     "isomorphic-fetch": "^2.2.1",
     "isomorphic-unfetch": "^3.0.0",
