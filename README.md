@@ -75,7 +75,7 @@ fetch("https://httpstat.us/200", { har: false }).then(response => {
 The above options will give you individual HAR entries. It’s likely that you’ll
 want to collect multiple requests into a single HAR log. For example, all API
 calls made while rendering a single page. Use the `createHarLog` export to
-generate a single valid HAR object.
+generate a complete HAR object that can hold multiple entries.
 
 You can pass the resulting object via the `har` option and entries will
 automatically be added to it:
@@ -98,8 +98,8 @@ async function run() {
 }
 ```
 
-You can also call `createHarLog` with an array of entries if you’d like to
-collect them in different way:
+You can also call `createHarLog` with an array of entries, if you’ve already
+collected them in a different way:
 
 ```js
 const har = createHarLog(entries);
