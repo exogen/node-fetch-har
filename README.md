@@ -1,5 +1,7 @@
 # node-fetch-har
 
+![npm](https://img.shields.io/npm/v/node-fetch-har.svg)
+
 A [Fetch API][fetch] wrapper that records [HAR logs][har] for server requests
 made with [node-fetch][]. You can then expose this data to get visibility into
 what’s happening on the server.
