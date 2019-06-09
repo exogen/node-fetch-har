@@ -2,6 +2,8 @@ const { URL } = require("url");
 const http = require("http");
 const https = require("https");
 const generateId = require("nanoid");
+const cookie = require("cookie");
+const setCookie = require("set-cookie-parser");
 
 const headerName = "x-har-request-id";
 
@@ -10,18 +12,16 @@ function handleRequest(harEntryMap, request, options) {
     throw new Error("Unsupported Node.js Agent implementation");
   }
 
-  const requestId =
-    options.headers && options.headers[headerName]
-      ? options.headers[headerName][0]
-      : null;
+  const headers = options.headers || {};
+  const requestId = headers[headerName] ? headers[headerName][0] : null;
 
   if (!requestId) {
     return;
   }
 
+  const now = Date.now();
   const url = new URL(options.url || options.href); // Depends on Node version?
 
-  const now = Date.now();
   const entry = {
     _timestamps: {
       start: now,
@@ -45,7 +45,14 @@ function handleRequest(harEntryMap, request, options) {
       ssl: -1
     },
     request: {
+      url: url.href,
       method: request.method,
+      queryString: [...url.searchParams].map(([name, value]) => ({
+        name,
+        value
+      })),
+      cookies: buildRequestCookies(headers),
+      headers: buildHeaders(headers),
       headersSize: -1,
       bodySize: -1
     },
@@ -56,27 +63,26 @@ function handleRequest(harEntryMap, request, options) {
   };
 
   entry.request.url = url.href;
-  entry.request.queryString = [...url.searchParams].map(([name, value]) => ({
-    name,
-    value
-  }));
-  entry.request.cookies = [];
-  entry.request.headers = buildHeaders(options.headers);
 
   request.on("response", response => {
-    harEntryMap.set(requestId, entry);
     entry._timestamps.firstByte = Date.now();
-    entry.request.httpVersion = `HTTP/${response.httpVersion}`;
-    entry.response.status = response.statusCode;
-    entry.response.statusText = response.statusMessage;
-    entry.response.httpVersion = entry.request.httpVersion;
-    entry.response.headers = buildHeaders(response.rawHeaders);
-    entry.response.cookies = [];
-    entry.response.content = {
-      size: -1,
-      mimeType: response.headers["content-type"]
+    harEntryMap.set(requestId, entry);
+    const httpVersion = `HTTP/${response.httpVersion}`;
+    entry.request.httpVersion = httpVersion;
+    entry.response = {
+      httpVersion,
+      status: response.statusCode,
+      statusText: response.statusMessage,
+      redirectURL: response.headers.location || "",
+      headers: buildHeaders(response.rawHeaders),
+      cookies: buildResponseCookies(response.headers),
+      content: {
+        size: -1,
+        mimeType: response.headers["content-type"]
+      },
+      headersSize: -1,
+      bodySize: -1
     };
-    entry.response.redirectURL = response.headers.location || "";
   });
 }
 
@@ -108,6 +114,52 @@ function buildHeaders(headers) {
     });
   }
   return list;
+}
+
+function buildRequestCookies(headers) {
+  const cookies = [];
+  for (const header in headers) {
+    if (header.toLowerCase() === "cookie") {
+      headers[header].forEach(headerValue => {
+        const parsed = cookie.parse(headerValue);
+        for (const name in parsed) {
+          const value = parsed[name];
+          cookies.push({ name, value });
+        }
+      });
+    }
+  }
+  return cookies;
+}
+
+function buildResponseCookies(headers) {
+  const cookies = [];
+  const setCookies = headers["set-cookie"];
+  if (setCookies) {
+    setCookies.forEach(headerValue => {
+      const parsed = setCookie.parse(headerValue);
+      parsed.forEach(cookie => {
+        const { name, value, path, domain, expires, httpOnly, secure } = cookie;
+        const harCookie = {
+          name,
+          value,
+          httpOnly: httpOnly || false,
+          secure: secure || false
+        };
+        if (path) {
+          harCookie.path = path;
+        }
+        if (domain) {
+          harCookie.domain = domain;
+        }
+        if (expires) {
+          harCookie.expires = expires.toISOString();
+        }
+        cookies.push(harCookie);
+      });
+    });
+  }
+  return cookies;
 }
 
 function createAgentClass(BaseAgent) {
@@ -146,9 +198,9 @@ function addHeaders(oldHeaders, newHeaders) {
   ) {
     const Headers = oldHeaders.constructor;
     const headers = new Headers(oldHeaders);
-    Object.keys(newHeaders).forEach(name => {
+    for (const name in newHeaders) {
       headers.set(name, newHeaders[name]);
-    });
+    }
     return headers;
   } else {
     return Object.assign({}, oldHeaders, newHeaders);
@@ -266,7 +318,7 @@ function createHarLog(entries = [], pageInfo = {}) {
       version: "1.2",
       creator: {
         name: "node-fetch-har",
-        version: "0.2"
+        version: "0.4"
       },
       pages: [
         Object.assign(

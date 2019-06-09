@@ -23,7 +23,9 @@
     "node-fetch": "^1.7.0 || ^2.0.0"
   },
   "dependencies": {
-    "nanoid": "^2.0.3"
+    "cookie": "^0.4.0",
+    "nanoid": "^2.0.3",
+    "set-cookie-parser": "^2.3.5"
   },
   "devDependencies": {
     "eslint": "^5.16.0",
