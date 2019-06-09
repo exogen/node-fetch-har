@@ -8,7 +8,7 @@
     "url": "https://github.com/exogen/node-fetch-har"
   },
   "engines": {
-    "node": ">=8.9.0"
+    "node": ">=8.10.0"
   },
   "files": [
     "index.js"
@@ -16,8 +16,10 @@
   "main": "index.js",
   "scripts": {
     "lint": "eslint index.js test.js",
-    "start": "cd demo && npm start",
-    "test": "npm run lint"
+    "start": "cd demo && yarn start",
+    "test": "yarn run lint && yarn test:coverage",
+    "test:coverage": "jest --coverage",
+    "test:only": "jest"
   },
   "peerDependencies": {
     "node-fetch": "^1.7.0 || ^2.0.0"
@@ -29,6 +31,9 @@
   },
   "devDependencies": {
     "eslint": "^5.16.0",
+    "isomorphic-fetch": "^2.2.1",
+    "isomorphic-unfetch": "^3.0.0",
+    "jest": "^24.8.0",
     "node-fetch": "^2.6.0"
   }
 }

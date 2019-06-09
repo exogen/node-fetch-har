@@ -266,14 +266,31 @@ function withHar(baseFetch, defaults = {}) {
         const { _timestamps: time } = entry;
         time.received = Date.now();
 
+        // In some versions of `node-fetch`, the returned `response` is actually
+        // an instance of `Body`, not `Response`, and the `Body` class does not
+        // set a `headers` property when constructed. So instead of using
+        // `response.constructor`, try to get `Response` from other places, like
+        // on the given Fetch instance or the global scope (like `isomorphic-fetch`
+        // sets). If all else fails, you can override the class used via the
+        // `Response` option to `withHar`.
+        const Response =
+          defaults.Response ||
+          baseFetch.Response ||
+          global.Response ||
+          response.constructor;
+
         // `clone()` is broken in `node-fetch` and results in a stalled Promise
         // for responses above a certain size threshold. So construct a similar
         // clone ourselves...
-        const Response = response.constructor;
         const responseCopy = new Response(text, {
           status: response.status,
           statusText: response.statusText,
-          headers: response.headers
+          headers: response.headers,
+          // These are not spec-compliant `Response` options, but `node-fetch`
+          // has them.
+          ok: response.ok,
+          size: response.size,
+          url: response.url
         });
 
         // Allow grouping by pages.
