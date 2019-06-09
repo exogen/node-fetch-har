@@ -2,7 +2,8 @@ const nodeFetch = require("node-fetch");
 const { withHar, createHarLog } = require("./index");
 
 async function run() {
-  const fetch = withHar(nodeFetch);
+  const har = createHarLog();
+  const fetch = withHar(nodeFetch, { har });
 
   await fetch("https://httpstat.us/200").then(response => {
     console.log(response.harEntry);
@@ -119,14 +120,14 @@ fragment TypeRef on __Type {
 }
 `
     })
-  }).then(
-    response => {
-      console.log(createHarLog([response.harEntry]));
-    },
-    err => {
-      console.error(err);
-    }
-  );
+  }).then(response => {
+    console.log(
+      "HAR log with individual entry:",
+      createHarLog([response.harEntry])
+    );
+  });
+
+  console.log("Entries collected:", har.log.entries.length);
 }
 
 run();

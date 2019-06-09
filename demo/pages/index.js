@@ -9,22 +9,19 @@ import baseFetch from "isomorphic-unfetch";
  */
 function createFetch() {
   if (process.browser) {
-    const getHarData = () => null;
-    return [baseFetch, getHarData];
+    return [baseFetch, null];
   } else {
     const { withHar, createHarLog } = require("../..");
-    const entries = [];
-    const onHarEntry = entry => entries.push(entry);
-    const fetch = withHar(baseFetch, { onHarEntry });
-    const getHarData = () => createHarLog(entries);
-    return [fetch, getHarData];
+    const har = createHarLog();
+    const fetch = withHar(baseFetch, { har });
+    return [fetch, har];
   }
 }
 
 DemoPage.getInitialProps = async ctx => {
   // In practice, you probably want to do this in your `_app.js` so it applies
   // to all pages.
-  const [fetch, getHarData] = createFetch();
+  const [fetch, harData] = createFetch();
 
   await fetch("https://httpstat.us/200");
 
@@ -50,9 +47,7 @@ query IntrospectionQuery {
     })
   });
 
-  return {
-    harData: getHarData()
-  };
+  return { harData };
 };
 
 export default function DemoPage({ harData }) {

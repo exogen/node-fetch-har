@@ -152,7 +152,7 @@ function addHeaders(oldHeaders, newHeaders) {
   }
 }
 
-function withHar(baseFetch, { onHarEntry } = {}) {
+function withHar(baseFetch, defaults = {}) {
   // Ideally we could just attach the generated entry data to the request
   // directly, like via a header. An ideal place would be in a header, but the
   // headers are already processed by the time the response is finished, so we
@@ -175,7 +175,9 @@ function withHar(baseFetch, { onHarEntry } = {}) {
   };
 
   return function fetch(input, options = {}) {
-    if (options.har === false) {
+    const { har = defaults.har, onHarEntry = defaults.onHarEntry } = options;
+
+    if (har === false) {
       return baseFetch(input, options);
     }
 
@@ -230,9 +232,12 @@ function withHar(baseFetch, { onHarEntry } = {}) {
 
         responseCopy.harEntry = entry;
 
-        const callback = options.onHarEntry || onHarEntry;
-        if (callback) {
-          callback(entry);
+        if (har && typeof har === "object") {
+          har.log.entries.push(entry);
+        }
+
+        if (onHarEntry) {
+          onHarEntry(entry);
         }
 
         return responseCopy;
@@ -245,13 +250,13 @@ function withHar(baseFetch, { onHarEntry } = {}) {
   };
 }
 
-function createHarLog(entries) {
+function createHarLog(entries = []) {
   return {
     log: {
       version: "1.2",
       creator: {
         name: "node-fetch-har",
-        version: "0.1"
+        version: "0.2"
       },
       entries
     }

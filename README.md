@@ -75,16 +75,18 @@ fetch("https://httpstat.us/200", { har: false }).then(response => {
 The above options will give you individual HAR entries. It’s likely that you’ll
 want to collect multiple requests into a single HAR log. For example, all API
 calls made while rendering a single page. Use the `createHarLog` export to
-generate a single valid HAR object:
+generate a single valid HAR object.
+
+You can pass the resulting object via the `har` option and entries will
+automatically be added to it:
 
 ```js
 import { withHar, createHarLog } from "node-fetch-har";
 import nodeFetch from "node-fetch";
 
 async function run() {
-  const fetch = withHar(nodeFetch);
-  const entries = [];
-  const onHarEntry = entry => entries.push(entry);
+  const har = createHarLog();
+  const fetch = withHar(nodeFetch, { har });
 
   await Promise.all([
     fetch("https://httpstat.us/200"),
@@ -92,9 +94,15 @@ async function run() {
     fetch("https://httpstat.us/200")
   ]);
 
-  const har = createHarLog(entries);
   console.log(har);
 }
+```
+
+You can also call `createHarLog` with an array of entries if you’d like to
+collect them in different way:
+
+```js
+const har = createHarLog(entries);
 ```
 
 ### …with Isomorphic Fetch
@@ -120,7 +128,7 @@ if (!process.browser) {
 
 ## Examples
 
-See the [demo](./demo/pages/index.js) for an example of exposing a SSR HAR
+See the [demo](./demo/pages/index.js) for an example of exposing an SSR HAR
 log from Next.js.
 
 Run the demo like so:
