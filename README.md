@@ -12,16 +12,18 @@ visibility into what’s happening on the server.
 
 Please test thoroughly to make sure it works for your use case.
 
-## Usage
+## Warning
 
-⚠️ HAR files can contain sensitive information like cookies or passwords. Since
-this library is for capturing what happens in the server, this is especially
+⚠️ **HAR files can contain sensitive information like cookies or passwords.** Since
+this library is for capturing what happens on the server, this is especially
 important because it is information that users can’t normally access in their
 own browser. Be careful about sharing this data. If you provide a method of
 exposing it, ensure it is only enabled for superusers or in secure environments.
 
 The `withHar` function takes a base Fetch implementation such as `node-fetch`
 and returns a new one that captures HAR entries:
+
+## Usage
 
 ```js
 import { withHar } from "node-fetch-har";
@@ -92,6 +94,27 @@ async function run() {
 
   const har = createHarLog(entries);
   console.log(har);
+}
+```
+
+### …with Isomorphic Fetch
+
+Make sure you only import this library and wrap the Fetch instance supplied by
+libraries like `isomorphic-fetch` or `isomorphic-unfetch` on the server. Not
+only does this library use built-in Node modules, but you don’t need it in the
+browser anyway, because you can already use the Network tab to spy on requests.
+
+The following example assumes your bundler (e.g. webpack) is configured to strip
+out conditional branches based on `process.browser`.
+
+```js
+import baseFetch from "isomorphic-unfetch";
+
+let fetch = baseFetch;
+
+if (!process.browser) {
+  const { withHar } = require("node-fetch-har");
+  fetch = withHar(baseFetch);
 }
 ```
 
