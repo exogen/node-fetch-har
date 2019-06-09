@@ -1,6 +1,6 @@
 # node-fetch-har
 
-A [Fetch API][fetch] wrapper that captures [HAR logs][har] for server requests
+A [Fetch API][fetch] wrapper that records [HAR logs][har] for server requests
 made with [node-fetch][]. You can then expose this data to get visibility into
 what’s happening on the server.
 
@@ -23,7 +23,7 @@ it, ensure it is only enabled for superusers or in secure environments.
 ## Usage
 
 The `withHar` function takes a base Fetch implementation such as `node-fetch`
-and returns a new one that captures HAR entries:
+and returns a new one that records HAR entries:
 
 ```js
 import { withHar } from "node-fetch-har";
@@ -32,7 +32,7 @@ import nodeFetch from "node-fetch";
 const fetch = withHar(nodeFetch);
 ```
 
-Individual HAR entries can then be obtained by accessing them on the `response`:
+Individual HAR entries can then accessed on the `response` object:
 
 ```js
 fetch("https://httpstat.us/200").then(response => {
@@ -44,23 +44,19 @@ fetch("https://httpstat.us/200").then(response => {
 Or by configuring `withHar` with an `onHarEntry` callback:
 
 ```js
-function onHarEntry(entry) {
-  console.log(entry);
-}
-
-const fetch = withHar(nodeFetch, { onHarEntry });
+const fetch = withHar(nodeFetch, {
+  onHarEntry: entry => console.log(entry)
+});
 ```
 
-Or by configuring individual requests with an `onHarEntry` option:
+You can also customize `onHarEntry` for individual requests:
 
 ```js
 const fetch = withHar(nodeFetch);
 
-function onHarEntry(entry) {
-  console.log(entry);
-}
-
-fetch("https://httpstat.us/200", { onHarEntry });
+fetch("https://httpstat.us/200", {
+  onHarEntry: entry => console.log(entry)
+});
 ```
 
 To disable HAR tracking for individual requests, set the `har` option to `false`:
@@ -74,7 +70,7 @@ fetch("https://httpstat.us/200", { har: false }).then(response => {
 
 The above options will give you individual HAR entries. It’s likely that you’ll
 want to collect multiple requests into a single HAR log. For example, all API
-calls made while rendering a single page. Use the `createHarLog` export to
+calls made while rendering a single page. Use the `createHarLog` function to
 generate a complete HAR object that can hold multiple entries.
 
 You can pass the resulting object via the `har` option and entries will
@@ -107,10 +103,11 @@ const har = createHarLog(entries);
 
 ### …with Isomorphic Fetch
 
-Make sure you only import this library and wrap the Fetch instance supplied by
-libraries like `isomorphic-fetch` or `isomorphic-unfetch` on the server. Not
-only does this library use built-in Node modules, but you don’t need it in the
-browser anyway, because you can already use the Network tab to spy on requests.
+When using “universal” libraries like [isomorphic-fetch][] or [isomorphic-unfetch][],
+make sure you only import this library and wrap the Fetch instance on the
+server. Not only does this library require built-in Node modules, but it’s
+unnecessary in the browser anyway, since you can already spy on requests (and
+export HAR logs) via the Network tab.
 
 The following example assumes your bundler (e.g. webpack) is configured to strip
 out conditional branches based on `process.browser`.
@@ -149,7 +146,7 @@ entries reference, use the `harPageRef` option to `withHar`:
 const fetch = withHar(nodeFetch, { har, harPageRef: "page_2" });
 ```
 
-Or customize individual requests via the `fetch` option:
+Or use the `harPageRef` option to `fetch` for individual requests:
 
 ```js
 await fetch(url, { harPageRef: "page_2" });
@@ -183,3 +180,5 @@ key timestamps and metadata like the HTTP version.
 [fetch]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API
 [node-fetch]: https://github.com/bitinn/node-fetch
 [har]: http://www.softwareishard.com/blog/har-12-spec/
+[isomorphic-fetch]: https://github.com/matthew-andrews/isomorphic-fetch
+[isomorphic-unfetch]: https://github.com/developit/unfetch
