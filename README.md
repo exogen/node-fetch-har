@@ -126,6 +126,35 @@ if (!process.browser) {
 }
 ```
 
+### Page Info
+
+The second argument to `createHarLog` allows you to add some initial page info:
+
+```js
+const har = createHarLog([], { title: "My Page" });
+```
+
+If you have additional pages within a single log, you’ll have to add them
+yourself:
+
+```js
+har.log.pages.push({ title: "2nd Page" });
+```
+
+If not provided, a default page will be created with an ID of `page_1`. By
+default, all HAR entries will reference this page. To customize the page that
+entries reference, use the `harPageRef` option to `withHar`:
+
+```js
+const fetch = withHar(nodeFetch, { har, harPageRef: "page_2" });
+```
+
+Or customize individual requests via the `fetch` option:
+
+```js
+await fetch(url, { harPageRef: "page_2" });
+```
+
 ## Examples
 
 See the [demo](./demo/pages/index.js) for an example of exposing an SSR HAR

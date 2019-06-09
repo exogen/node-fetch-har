@@ -37,9 +37,12 @@ function handleRequest(harEntryMap, request, options) {
       // not a positive number, it shows the `wait` time as stalled instead
       // of the time waiting for the response.
       blocked: 0.01,
+      dns: -1,
+      connect: -1,
       send: 0,
       wait: 0,
-      receive: 0
+      receive: 0,
+      ssl: -1
     },
     request: {
       method: request.method,
@@ -175,7 +178,11 @@ function withHar(baseFetch, defaults = {}) {
   };
 
   return function fetch(input, options = {}) {
-    const { har = defaults.har, onHarEntry = defaults.onHarEntry } = options;
+    const {
+      har = defaults.har,
+      harPageRef = defaults.harPageRef,
+      onHarEntry = defaults.onHarEntry
+    } = options;
 
     if (har === false) {
       return baseFetch(input, options);
@@ -195,6 +202,7 @@ function withHar(baseFetch, defaults = {}) {
       async response => {
         const entry = harEntryMap.get(requestId);
         harEntryMap.delete(requestId);
+
         if (!entry) {
           return response;
         }
@@ -216,6 +224,8 @@ function withHar(baseFetch, defaults = {}) {
           headers: response.headers
         });
 
+        // Allow grouping by pages.
+        entry.pageref = harPageRef || "page_1";
         // Response content info.
         entry.response.content.text = text;
         entry.response.content.size = text.length;
@@ -250,7 +260,7 @@ function withHar(baseFetch, defaults = {}) {
   };
 }
 
-function createHarLog(entries = []) {
+function createHarLog(entries = [], pageInfo = {}) {
   return {
     log: {
       version: "1.2",
@@ -258,6 +268,20 @@ function createHarLog(entries = []) {
         name: "node-fetch-har",
         version: "0.2"
       },
+      pages: [
+        Object.assign(
+          {
+            startedDateTime: new Date().toISOString(),
+            id: "page_1",
+            title: "Page",
+            pageTimings: {
+              onContentLoad: -1,
+              onLoad: -1
+            }
+          },
+          pageInfo
+        )
+      ],
       entries
     }
   };

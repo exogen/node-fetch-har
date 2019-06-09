@@ -7,12 +7,12 @@ import baseFetch from "isomorphic-unfetch";
  * `node-fetch` specifically, and we already have the Network tab available in
  * the browser anyway!
  */
-function createFetch() {
+function createFetch(pageInfo) {
   if (process.browser) {
     return [baseFetch, null];
   } else {
     const { withHar, createHarLog } = require("../..");
-    const har = createHarLog();
+    const har = createHarLog([], pageInfo);
     const fetch = withHar(baseFetch, { har });
     return [fetch, har];
   }
@@ -21,7 +21,7 @@ function createFetch() {
 DemoPage.getInitialProps = async ctx => {
   // In practice, you probably want to do this in your `_app.js` so it applies
   // to all pages.
-  const [fetch, harData] = createFetch();
+  const [fetch, harData] = createFetch({ title: "Demo Page" });
 
   await fetch("https://httpstat.us/200");
 
@@ -37,13 +37,93 @@ query IntrospectionQuery {
     queryType { name }
     mutationType { name }
     subscriptionType { name }
+    types {
+      ...FullType
+    }
     directives {
       name
       description
       locations
+      args {
+        ...InputValue
+      }
     }
   }
-}`
+}
+
+fragment FullType on __Type {
+  kind
+  name
+  description
+  fields(includeDeprecated: true) {
+    name
+    description
+    args {
+      ...InputValue
+    }
+    type {
+      ...TypeRef
+    }
+    isDeprecated
+    deprecationReason
+  }
+  inputFields {
+    ...InputValue
+  }
+  interfaces {
+    ...TypeRef
+  }
+  enumValues(includeDeprecated: true) {
+    name
+    description
+    isDeprecated
+    deprecationReason
+  }
+  possibleTypes {
+    ...TypeRef
+  }
+}
+
+fragment InputValue on __InputValue {
+  name
+  description
+  type { ...TypeRef }
+  defaultValue
+}
+
+fragment TypeRef on __Type {
+  kind
+  name
+  ofType {
+    kind
+    name
+    ofType {
+      kind
+      name
+      ofType {
+        kind
+        name
+        ofType {
+          kind
+          name
+          ofType {
+            kind
+            name
+            ofType {
+              kind
+              name
+              ofType {
+                kind
+                name
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+`
     })
   });
 
