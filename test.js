@@ -285,6 +285,101 @@ fragment TypeRef on __Type {
             }
           });
         });
+
+        it("fails gracefully if fetch unsets our request ID header", async () => {
+          function customFetch(input, options) {
+            // Remove `x-har-request-id`.
+            const headers = { ...options.headers };
+            delete headers["x-har-request-id"];
+            return baseFetch(input, { ...options, headers });
+          }
+          const fetch = withHar(customFetch);
+          const response = await fetch("https://postman-echo.com/get");
+          expect(response).not.toHaveProperty("harEntry");
+        });
+
+        it("removes the entry from the entry map on success", async () => {
+          const harEntryMap = new Map();
+          jest.spyOn(harEntryMap, "get");
+          jest.spyOn(harEntryMap, "set");
+          jest.spyOn(harEntryMap, "delete");
+          const fetch = withHar(baseFetch, { harEntryMap });
+          await fetch("https://postman-echo.com/get");
+          expect(harEntryMap.set).toHaveBeenCalled();
+          expect(harEntryMap.delete).toHaveBeenCalled();
+          expect(harEntryMap.size).toBe(0);
+        });
+
+        it("removes the entry from the entry map on failure", async () => {
+          const harEntryMap = new Map();
+          jest.spyOn(harEntryMap, "get");
+          jest.spyOn(harEntryMap, "set");
+          jest.spyOn(harEntryMap, "delete");
+          const fetch = withHar(baseFetch, { harEntryMap });
+          await expect(
+            fetch(
+              "https://httpbin.org/redirect-to?url=https://github.com/exogen&status_code=302",
+              {
+                redirect: "error"
+              }
+            )
+          ).rejects.toThrow();
+          expect(harEntryMap.set).toHaveBeenCalled();
+          expect(harEntryMap.delete).toHaveBeenCalled();
+          expect(harEntryMap.size).toBe(0);
+        });
+
+        it("records multiple entries and populates redirectURL on redirects", async () => {
+          const har = createHarLog();
+          const onHarEntry = jest.fn();
+          const fetch = withHar(baseFetch, { har, onHarEntry });
+          const response = await fetch(
+            "https://httpbin.org/redirect-to?url=https://github.com/exogen&status_code=302"
+          );
+          expect(har.log.entries).toHaveLength(2);
+          const [firstEntry, secondEntry] = har.log.entries;
+          expect(firstEntry.response.status).toBe(302);
+          expect(firstEntry.response.redirectURL).toBe(
+            "https://github.com/exogen"
+          );
+          expect(secondEntry).toBe(response.harEntry);
+          expect(response.harEntry.request.url).toBe(
+            "https://github.com/exogen"
+          );
+          expect(response.harEntry.response.status).toBe(200);
+          expect(response.harEntry.response.redirectURL).toBe("");
+          expect(onHarEntry).toHaveBeenCalledTimes(2);
+          expect(onHarEntry).toHaveBeenNthCalledWith(1, firstEntry);
+          expect(onHarEntry).toHaveBeenNthCalledWith(2, secondEntry);
+        });
+
+        it("works when headers are a Headers object", async () => {
+          const Headers = baseFetch.Headers || global.Headers;
+          const headers = new Headers();
+          headers.set("X-Test-Foo", "foo");
+          headers.set("X-Test-Bar", "bar");
+          const fetch = withHar(baseFetch);
+          const response = await fetch("https://httpbin.org/status/201", {
+            headers
+          });
+          expect(response.harEntry.request.url).toBe(
+            "https://httpbin.org/status/201"
+          );
+        });
+
+        it("works when the input is a Request object", async () => {
+          const Request = baseFetch.Request || global.Request;
+          const request = new Request("https://postman-echo.com/post", {
+            method: "POST",
+            body: "test"
+          });
+          const fetch = withHar(baseFetch);
+          const response = await fetch(request);
+          expect(response.harEntry.request.url).toBe(
+            "https://postman-echo.com/post"
+          );
+          expect(response.harEntry.request.method).toBe("POST");
+        });
       });
 
       it("reports entries with the onHarEntry option", async () => {
