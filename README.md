@@ -1,6 +1,6 @@
 # node-fetch-har
 
-![npm](https://img.shields.io/npm/v/node-fetch-har.svg)
+[![npm](https://img.shields.io/npm/v/node-fetch-har.svg)](https://www.npmjs.com/package/node-fetch-har)
 ![Travis](https://img.shields.io/travis/exogen/node-fetch-har.svg)
 ![Coveralls](https://img.shields.io/coveralls/github/exogen/node-fetch-har.svg)
 
