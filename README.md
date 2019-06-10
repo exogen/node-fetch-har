@@ -127,6 +127,18 @@ if (!process.browser) {
 }
 ```
 
+### Redirects
+
+With the Fetch API’s `redirect` option in `follow` mode (the default), calls
+will transparently follow redirects; that is, you get the response from the
+final, redirected request. Likewise, the `harEntry` property of the response
+will correspond with that final request.
+
+To get the HAR entries for the redirects, use the `har` or `onHarEntry` options
+(described above). The redirects will be appended to the log and reported with
+`onHarEntry` along with the final entry. Note that this means that it’s possible
+for a single `fetch` call to result in multiple entries.
+
 ### Page Info
 
 The second argument to `createHarLog` allows you to add some initial page info:
@@ -171,6 +183,7 @@ $ yarn start
 
 ## TODO
 
+- Support for request body info.
 - Support for compression info.
 - Better tests with multiple response types, encodings, etc.
 

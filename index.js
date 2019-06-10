@@ -19,6 +19,15 @@ function handleRequest(harEntryMap, request, options) {
     return;
   }
 
+  // Redirects! Fetch follows them (in `follow`) mode and uses the same request
+  // headers. So we'll see multiple requests with the same ID. We should remove
+  // any previous entry from `harEntryMap` and attach it has a "parent" to this
+  // one.
+  const parentEntry = harEntryMap.get(requestId);
+  if (parentEntry) {
+    harEntryMap.delete(requestId);
+  }
+
   const now = Date.now();
   const url = new URL(options.url || options.href); // Depends on Node version?
 
@@ -61,6 +70,10 @@ function handleRequest(harEntryMap, request, options) {
       bodySize: 0
     }
   };
+
+  if (parentEntry) {
+    entry._parent = parentEntry;
+  }
 
   entry.request.url = url.href;
 
@@ -220,7 +233,9 @@ function withHar(baseFetch, defaults = {}) {
   // So instead, we generate an ID for each request and attach it to a request
   // header. The agent then adds the entry data to the Map above using the ID
   // as a key.
-  const harEntryMap = new Map();
+
+  // Undocumented option just for testing.
+  const harEntryMap = defaults.harEntryMap || new Map();
 
   let httpAgent = new HarHttpAgent({ harEntryMap });
   let httpsAgent = new HarHttpsAgent({ harEntryMap });
@@ -266,6 +281,13 @@ function withHar(baseFetch, defaults = {}) {
         const { _timestamps: time } = entry;
         time.received = Date.now();
 
+        const parents = [];
+        let parent = entry._parent;
+        while (parent) {
+          parents.unshift(parent);
+          parent = parent._parent;
+        }
+
         // In some versions of `node-fetch`, the returned `response` is actually
         // an instance of `Body`, not `Response`, and the `Body` class does not
         // set a `headers` property when constructed. So instead of using
@@ -295,6 +317,9 @@ function withHar(baseFetch, defaults = {}) {
 
         // Allow grouping by pages.
         entry.pageref = harPageRef || "page_1";
+        parents.forEach(parent => {
+          parent.pageref = harPageRef || "page_1";
+        });
         // Response content info.
         entry.response.content.text = text;
         entry.response.content.size = text.length;
@@ -312,10 +337,13 @@ function withHar(baseFetch, defaults = {}) {
         responseCopy.harEntry = entry;
 
         if (har && typeof har === "object") {
-          har.log.entries.push(entry);
+          har.log.entries.push(...parents, entry);
         }
 
         if (onHarEntry) {
+          parents.forEach(parent => {
+            onHarEntry(parent);
+          });
           onHarEntry(entry);
         }
 
