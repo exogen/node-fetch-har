@@ -380,6 +380,43 @@ fragment TypeRef on __Type {
           );
           expect(response.harEntry.request.method).toBe("POST");
         });
+
+        it("records request body info", async () => {
+          const fetch = withHar(baseFetch);
+          const response = await fetch("https://postman-echo.com/post", {
+            method: "POST",
+            headers: {
+              "Content-Type": "text/plain"
+            },
+            body: "test one two!"
+          });
+          expect(response.harEntry.request.bodySize).toBe(13);
+          expect(response.harEntry.request.postData).toEqual({
+            mimeType: "text/plain",
+            text: "test one two!"
+          });
+        });
+
+        it("records request body params", async () => {
+          const fetch = withHar(baseFetch);
+          const response = await fetch("https://postman-echo.com/post", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: "foo=1&bar=2&bar=three%20aka%203&baz=4"
+          });
+          expect(response.harEntry.request.bodySize).toBe(37);
+          expect(response.harEntry.request.postData).toEqual({
+            mimeType: "application/x-www-form-urlencoded",
+            params: [
+              { name: "foo", value: "1" },
+              { name: "bar", value: "2" },
+              { name: "bar", value: "three aka 3" },
+              { name: "baz", value: "4" }
+            ]
+          });
+        });
       });
 
       it("reports entries with the onHarEntry option", async () => {

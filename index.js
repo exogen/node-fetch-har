@@ -1,6 +1,7 @@
 const { URL } = require("url");
 const http = require("http");
 const https = require("https");
+const querystring = require("querystring");
 const generateId = require("nanoid");
 const cookie = require("cookie");
 const setCookie = require("set-cookie-parser");
@@ -32,6 +33,7 @@ function handleRequest(harEntryMap, request, options) {
   const url = new URL(options.url || options.href); // Depends on Node version?
 
   const entry = {
+    _parent: parentEntry,
     _timestamps: {
       start: now,
       sent: now
@@ -54,14 +56,14 @@ function handleRequest(harEntryMap, request, options) {
       ssl: -1
     },
     request: {
-      url: url.href,
       method: request.method,
+      url: url.href,
+      cookies: buildRequestCookies(headers),
+      headers: buildHeaders(headers),
       queryString: [...url.searchParams].map(([name, value]) => ({
         name,
         value
       })),
-      cookies: buildRequestCookies(headers),
-      headers: buildHeaders(headers),
       headersSize: -1,
       bodySize: -1
     },
@@ -71,28 +73,87 @@ function handleRequest(harEntryMap, request, options) {
     }
   };
 
-  if (parentEntry) {
-    entry._parent = parentEntry;
-  }
+  // Some versions of `node-fetch` will put `body` in the `options` received by
+  // this function and others exclude it. Instead we have to capture writes to
+  // the `ClientRequest` stream. There might be some official way to do this
+  // with streams, but the events and piping I tried didn't work. FIXME?
+  const _write = request.write;
+  const _end = request.end;
+  let requestBody;
 
-  entry.request.url = url.href;
+  const concatBody = chunk => {
+    // Assume the writer will be consistent such that we wouldn't get Buffers in
+    // some writes and strings in others.
+    if (typeof chunk === "string") {
+      if (requestBody == null) {
+        requestBody = chunk;
+      } else {
+        requestBody += chunk;
+      }
+    } else if (Buffer.isBuffer(chunk)) {
+      if (requestBody == null) {
+        requestBody = chunk;
+      } else {
+        requestBody = Buffer.concat([requestBody, chunk]);
+      }
+    }
+  };
+
+  request.write = function(...args) {
+    concatBody(...args);
+    return _write.call(this, ...args);
+  };
+
+  request.end = function(...args) {
+    concatBody(...args);
+
+    if (requestBody != null) {
+      // Works for both buffers and strings.
+      entry.request.bodySize = requestBody.length;
+
+      let mimeType;
+      for (const name in headers) {
+        if (name.toLowerCase() === "content-type") {
+          mimeType = headers[name][0];
+          break;
+        }
+      }
+
+      if (mimeType) {
+        const bodyString = requestBody.toString(); // FIXME: Assumes encoding?
+        if (mimeType === "application/x-www-form-urlencoded") {
+          entry.request.postData = {
+            mimeType,
+            params: buildParams(bodyString)
+          };
+        } else {
+          entry.request.postData = { mimeType, text: bodyString };
+        }
+      }
+    }
+
+    return _end.call(this, ...args);
+  };
 
   request.on("response", response => {
     entry._timestamps.firstByte = Date.now();
     harEntryMap.set(requestId, entry);
     const httpVersion = `HTTP/${response.httpVersion}`;
+
+    // Populate request info that isn't available until now.
     entry.request.httpVersion = httpVersion;
+
     entry.response = {
-      httpVersion,
       status: response.statusCode,
       statusText: response.statusMessage,
-      redirectURL: response.headers.location || "",
-      headers: buildHeaders(response.rawHeaders),
+      httpVersion,
       cookies: buildResponseCookies(response.headers),
+      headers: buildHeaders(response.rawHeaders),
       content: {
         size: -1,
         mimeType: response.headers["content-type"]
       },
+      redirectURL: response.headers.location || "",
       headersSize: -1,
       bodySize: -1
     };
@@ -143,6 +204,22 @@ function buildRequestCookies(headers) {
     }
   }
   return cookies;
+}
+
+function buildParams(paramString) {
+  const params = [];
+  const parsed = querystring.parse(paramString);
+  for (const name in parsed) {
+    const value = parsed[name];
+    if (Array.isArray(value)) {
+      value.forEach(item => {
+        params.push({ name, value: item });
+      });
+    } else {
+      params.push({ name, value });
+    }
+  }
+  return params;
 }
 
 function buildResponseCookies(headers) {

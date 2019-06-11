@@ -1,8 +1,8 @@
 # node-fetch-har
 
-[![npm](https://img.shields.io/npm/v/node-fetch-har.svg)](https://www.npmjs.com/package/node-fetch-har)
-![Travis](https://img.shields.io/travis/exogen/node-fetch-har.svg)
-![Coveralls](https://img.shields.io/coveralls/github/exogen/node-fetch-har.svg)
+[![npm](https://img.shields.io/npm/v/node-fetch-har.svg)][npm]
+[![Travis](https://img.shields.io/travis/exogen/node-fetch-har.svg)][travis]
+[![Coveralls](https://img.shields.io/coveralls/github/exogen/node-fetch-har.svg)][coveralls]
 
 A [Fetch API][fetch] wrapper that records [HAR logs][har] for server requests
 made with [node-fetch][]. You can then expose this data to get visibility into
@@ -129,15 +129,30 @@ if (!process.browser) {
 
 ### Redirects
 
+Due to redirects, it is possible for a single `fetch` call to result in multiple
+HTTP requests. As you might expect, multiple HAR entries will be recorded as
+well.
+
 With the Fetch API’s `redirect` option in `follow` mode (the default), calls
-will transparently follow redirects; that is, you get the response from the
+will transparently follow redirects; that is, you get the response for the
 final, redirected request. Likewise, the `harEntry` property of the response
 will correspond with that final request.
 
 To get the HAR entries for the redirects, use the `har` or `onHarEntry` options
 (described above). The redirects will be appended to the log and reported with
-`onHarEntry` along with the final entry. Note that this means that it’s possible
-for a single `fetch` call to result in multiple entries.
+`onHarEntry` in addition to the final entry, in the order that they were made.
+
+### Request Body
+
+If there is no `Content-Type` header specified in the request, then `postData`
+will not be populated since we would not be able to populate the required
+`mimeType` field.
+
+Additionally, `params` will only be populated if the `Content-Type` is exactly
+`application/x-www-form-urlencoded`. If it is anything else (including
+`multipart/form-data`) then `text` will be populated instead.
+
+There may be limited support for exotic request body encodings.
 
 ### Page Info
 
@@ -183,7 +198,6 @@ $ yarn start
 
 ## TODO
 
-- Support for request body info.
 - Support for compression info.
 - Better tests with multiple response types, encodings, etc.
 
@@ -199,3 +213,6 @@ key timestamps and metadata like the HTTP version.
 [har]: http://www.softwareishard.com/blog/har-12-spec/
 [isomorphic-fetch]: https://github.com/matthew-andrews/isomorphic-fetch
 [isomorphic-unfetch]: https://github.com/developit/unfetch
+[npm]: https://www.npmjs.com/package/node-fetch-har
+[travis]: https://travis-ci.org/exogen/node-fetch-har
+[coveralls]: https://coveralls.io/github/exogen/node-fetch-har
