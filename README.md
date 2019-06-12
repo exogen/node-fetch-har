@@ -198,8 +198,7 @@ $ yarn start
 
 ## TODO
 
-- Support for compression info.
-- Better tests with multiple response types, encodings, etc.
+- More tests for different response types, protocols (HTTP/2), encodings, etc.
 
 ## How does it work?
 
