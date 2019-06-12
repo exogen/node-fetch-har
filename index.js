@@ -158,7 +158,10 @@ function handleRequest(harEntryMap, request, options) {
     entry._timestamps.firstByte = process.hrtime();
     harEntryMap.set(requestId, entry);
 
-    // No we know whether `lookup` or `connect` happened.
+    // Now we know whether `lookup` or `connect` happened. It's possible they
+    // were skipped if the hostname was already resolved (or we were given an
+    // IP directly), or if a connection was already open (e.g. due to
+    // `keep-alive`).
     if (!entry._timestamps.lookup) {
       entry._timestamps.lookup = entry._timestamps.socket;
     }
