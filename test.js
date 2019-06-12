@@ -28,9 +28,9 @@ describe("withHar", () => {
             ),
             time: expect.any(Number),
             timings: {
-              blocked: 0.01,
-              connect: -1,
-              dns: -1,
+              blocked: expect.any(Number),
+              connect: expect.any(Number),
+              dns: expect.any(Number),
               receive: expect.any(Number),
               send: expect.any(Number),
               ssl: -1,

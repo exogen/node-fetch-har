@@ -54,10 +54,7 @@ function handleRequest(harEntryMap, request, options) {
       afterRequest: null
     },
     timings: {
-      // Chrome's HAR viewer (the Network panel) is broken. If `blocked` is
-      // not a positive number, it shows the `wait` time as stalled instead
-      // of the time waiting for the response.
-      blocked: 0.01,
+      blocked: -1,
       dns: -1,
       connect: -1,
       send: 0,
@@ -141,6 +138,18 @@ function handleRequest(harEntryMap, request, options) {
     return _end.call(this, ...args);
   };
 
+  request.on("socket", socket => {
+    entry._timestamps.socket = process.hrtime();
+
+    socket.on("lookup", () => {
+      entry._timestamps.lookup = process.hrtime();
+    });
+
+    socket.on("connect", () => {
+      entry._timestamps.connect = process.hrtime();
+    });
+  });
+
   request.on("finish", () => {
     entry._timestamps.sent = process.hrtime();
   });
@@ -148,6 +157,14 @@ function handleRequest(harEntryMap, request, options) {
   request.on("response", response => {
     entry._timestamps.firstByte = process.hrtime();
     harEntryMap.set(requestId, entry);
+
+    // No we know whether `lookup` or `connect` happened.
+    if (!entry._timestamps.lookup) {
+      entry._timestamps.lookup = entry._timestamps.socket;
+    }
+    if (!entry._timestamps.connect) {
+      entry._timestamps.connect = entry._timestamps.lookup;
+    }
 
     // Populate request info that isn't available until now.
     const httpVersion = `HTTP/${response.httpVersion}`;
@@ -440,20 +457,25 @@ function withHar(baseFetch, defaults = {}) {
           entry.response.bodySize = bodySize;
         }
         // Finalize timing info.
-        if (time.sent == null) {
-          time.sent = time.start;
-        }
-        entry.timings.send = getDuration(time.start, time.sent);
+        // Chrome's HAR viewer (the Network panel) is broken and doesn't honor
+        // the HAR spec. If `blocked` is not a positive number, it shows the
+        // `wait` time as stalled instead of the time waiting for the response.
+        entry.timings.blocked = Math.max(
+          getDuration(time.start, time.socket),
+          0.01 // Minimum value, see above.
+        );
+        entry.timings.dns = getDuration(time.socket, time.lookup);
+        entry.timings.connect = getDuration(time.lookup, time.connect);
+        entry.timings.send = getDuration(time.connect, time.sent);
         entry.timings.wait = Math.max(
+          // Seems like it might be possible to receive a response before the
+          // request fires its `finish` event. This is just a hunch and it would
+          // be worthwhile to disprove.
           getDuration(time.sent, time.firstByte),
           0
         );
         entry.timings.receive = getDuration(time.firstByte, time.received);
-        entry.time =
-          entry.timings.blocked +
-          entry.timings.send +
-          entry.timings.wait +
-          entry.timings.receive;
+        entry.time = getDuration(time.start, time.received);
 
         responseCopy.harEntry = entry;
 
