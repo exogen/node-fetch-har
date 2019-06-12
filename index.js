@@ -5,8 +5,18 @@ const querystring = require("querystring");
 const generateId = require("nanoid");
 const cookie = require("cookie");
 const setCookie = require("set-cookie-parser");
+const {
+  name: packageName,
+  version: packageVersion
+} = require("./package.json");
 
 const headerName = "x-har-request-id";
+
+function getDuration(a, b) {
+  const seconds = b[0] - a[0];
+  const nanoseconds = b[1] - a[1];
+  return seconds * 1000 + nanoseconds / 1e6;
+}
 
 function handleRequest(harEntryMap, request, options) {
   if (!options || typeof options !== "object") {
@@ -30,13 +40,13 @@ function handleRequest(harEntryMap, request, options) {
   }
 
   const now = Date.now();
+  const startTime = process.hrtime();
   const url = new URL(options.url || options.href); // Depends on Node version?
 
   const entry = {
     _parent: parentEntry,
     _timestamps: {
-      start: now,
-      sent: now
+      start: startTime
     },
     startedDateTime: new Date(now).toISOString(),
     cache: {
@@ -66,10 +76,6 @@ function handleRequest(harEntryMap, request, options) {
       })),
       headersSize: -1,
       bodySize: -1
-    },
-    response: {
-      headersSize: -1,
-      bodySize: 0
     }
   };
 
@@ -109,7 +115,7 @@ function handleRequest(harEntryMap, request, options) {
 
     if (requestBody != null) {
       // Works for both buffers and strings.
-      entry.request.bodySize = requestBody.length;
+      entry.request.bodySize = Buffer.byteLength(requestBody);
 
       let mimeType;
       for (const name in headers) {
@@ -135,12 +141,16 @@ function handleRequest(harEntryMap, request, options) {
     return _end.call(this, ...args);
   };
 
+  request.on("finish", () => {
+    entry._timestamps.sent = process.hrtime();
+  });
+
   request.on("response", response => {
-    entry._timestamps.firstByte = Date.now();
+    entry._timestamps.firstByte = process.hrtime();
     harEntryMap.set(requestId, entry);
-    const httpVersion = `HTTP/${response.httpVersion}`;
 
     // Populate request info that isn't available until now.
+    const httpVersion = `HTTP/${response.httpVersion}`;
     entry.request.httpVersion = httpVersion;
 
     entry.response = {
@@ -157,6 +167,21 @@ function handleRequest(harEntryMap, request, options) {
       headersSize: -1,
       bodySize: -1
     };
+
+    // Detect supported compression encodings.
+    const compressed = /^(gzip|compress|deflate|br)$/.test(
+      response.headers["content-encoding"]
+    );
+
+    if (compressed) {
+      entry._compressed = true;
+      response.on("data", chunk => {
+        if (entry.response.bodySize === -1) {
+          entry.response.bodySize = 0;
+        }
+        entry.response.bodySize += Buffer.byteLength(chunk);
+      });
+    }
   });
 }
 
@@ -356,14 +381,19 @@ function withHar(baseFetch, defaults = {}) {
         const text = await response.text();
 
         const { _timestamps: time } = entry;
-        time.received = Date.now();
+        time.received = process.hrtime();
 
         const parents = [];
-        let parent = entry._parent;
-        while (parent) {
-          parents.unshift(parent);
-          parent = parent._parent;
-        }
+        let child = entry;
+        do {
+          let parent = child._parent;
+          // Remove linked parent references as they're flattened.
+          delete child._parent;
+          if (parent) {
+            parents.unshift(parent);
+          }
+          child = parent;
+        } while (child);
 
         // In some versions of `node-fetch`, the returned `response` is actually
         // an instance of `Body`, not `Response`, and the `Body` class does not
@@ -395,16 +425,30 @@ function withHar(baseFetch, defaults = {}) {
         // Allow grouping by pages.
         entry.pageref = harPageRef || "page_1";
         parents.forEach(parent => {
-          parent.pageref = harPageRef || "page_1";
+          parent.pageref = entry.pageref;
         });
         // Response content info.
+        const bodySize = Buffer.byteLength(text);
         entry.response.content.text = text;
-        entry.response.content.size = text.length;
-        entry.response.bodySize = text.length;
+        entry.response.content.size = bodySize;
+        if (entry._compressed) {
+          if (entry.response.bodySize !== -1) {
+            entry.response.content.compression =
+              entry.response.content.size - entry.response.bodySize;
+          }
+        } else {
+          entry.response.bodySize = bodySize;
+        }
         // Finalize timing info.
-        entry.timings.send = time.sent - time.start;
-        entry.timings.wait = time.firstByte - time.sent;
-        entry.timings.receive = time.received - time.firstByte;
+        if (time.sent == null) {
+          time.sent = time.start;
+        }
+        entry.timings.send = getDuration(time.start, time.sent);
+        entry.timings.wait = Math.max(
+          getDuration(time.sent, time.firstByte),
+          0
+        );
+        entry.timings.receive = getDuration(time.firstByte, time.received);
         entry.time =
           entry.timings.blocked +
           entry.timings.send +
@@ -439,8 +483,8 @@ function createHarLog(entries = [], pageInfo = {}) {
     log: {
       version: "1.2",
       creator: {
-        name: "node-fetch-har",
-        version: "0.4"
+        name: packageName,
+        version: packageVersion
       },
       pages: [
         Object.assign(

@@ -1,4 +1,5 @@
 import baseFetch from "isomorphic-unfetch";
+import Link from "next/link";
 
 /**
  * Return a `fetch` implementation and a function that will return the full HAR
@@ -170,6 +171,12 @@ export default function DemoPage({ harData }) {
           </a>
         </div>
       ) : null}
+      <p>
+        <Link href="/">
+          <a>Send requests in browser</a>
+        </Link>{" "}
+        for comparison
+      </p>
       <pre>{JSON.stringify(harData, null, 2)}</pre>
     </main>
   );
