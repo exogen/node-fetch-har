@@ -148,6 +148,10 @@ function handleRequest(harEntryMap, request, options) {
     socket.on("connect", () => {
       entry._timestamps.connect = process.hrtime();
     });
+
+    socket.on("secureConnect", () => {
+      entry._timestamps.secureConnect = process.hrtime();
+    });
   });
 
   request.on("finish", () => {
@@ -468,8 +472,19 @@ function withHar(baseFetch, defaults = {}) {
           0.01 // Minimum value, see above.
         );
         entry.timings.dns = getDuration(time.socket, time.lookup);
-        entry.timings.connect = getDuration(time.lookup, time.connect);
-        entry.timings.send = getDuration(time.connect, time.sent);
+        entry.timings.connect = getDuration(
+          time.lookup,
+          // For backwards compatibility with HAR 1.1, the `connect` timing
+          // includes `ssl` instead of being mutually exclusive.
+          time.secureConnect || time.connect
+        );
+        if (time.secureConnect) {
+          entry.timings.ssl = getDuration(time.connect, time.secureConnect);
+        }
+        entry.timings.send = getDuration(
+          time.secureConnect || time.connect,
+          time.sent
+        );
         entry.timings.wait = Math.max(
           // Seems like it might be possible to receive a response before the
           // request fires its `finish` event. This is just a hunch and it would
