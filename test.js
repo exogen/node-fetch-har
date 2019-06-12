@@ -417,6 +417,34 @@ fragment TypeRef on __Type {
             ]
           });
         });
+
+        it("supports compression savings detection (gzip)", async () => {
+          const fetch = withHar(baseFetch);
+          const response = await fetch("https://postman-echo.com/gzip");
+          const body = await response.json();
+          expect(body.gzipped).toBe(true);
+          expect(response.harEntry.response.bodySize).toBeLessThan(
+            response.harEntry.response.content.size
+          );
+          expect(response.harEntry.response.content.compression).toBe(
+            response.harEntry.response.content.size -
+              response.harEntry.response.bodySize
+          );
+        });
+
+        it("supports compression savings detection (deflate)", async () => {
+          const fetch = withHar(baseFetch);
+          const response = await fetch("https://postman-echo.com/deflate");
+          const body = await response.json();
+          expect(body.deflated).toBe(true);
+          expect(response.harEntry.response.bodySize).toBeLessThan(
+            response.harEntry.response.content.size
+          );
+          expect(response.harEntry.response.content.compression).toBe(
+            response.harEntry.response.content.size -
+              response.harEntry.response.bodySize
+          );
+        });
       });
 
       it("reports entries with the onHarEntry option", async () => {
