@@ -276,7 +276,12 @@ function buildResponseCookies(headers) {
   const setCookies = headers["set-cookie"];
   if (setCookies) {
     setCookies.forEach(headerValue => {
-      const parsed = setCookie.parse(headerValue);
+      let parsed;
+      try {
+        parsed = setCookie.parse(headerValue);
+      } catch (err) {
+        return;
+      }
       parsed.forEach(cookie => {
         const { name, value, path, domain, expires, httpOnly, secure } = cookie;
         const harCookie = {

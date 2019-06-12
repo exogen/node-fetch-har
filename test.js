@@ -445,6 +445,15 @@ fragment TypeRef on __Type {
               response.harEntry.response.bodySize
           );
         });
+
+        it("ignores malformed Set-Cookie headers instead of throwing an error", async () => {
+          const fetch = withHar(baseFetch);
+          await expect(
+            fetch(
+              "https://postman-echo.com/response-headers?Content-Type=text/html&Set-Cookie=%3Da%3D5%25%25"
+            )
+          ).resolves.toHaveProperty("harEntry");
+        });
       });
 
       it("reports entries with the onHarEntry option", async () => {
