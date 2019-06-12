@@ -33,7 +33,7 @@ describe("withHar", () => {
               dns: expect.any(Number),
               receive: expect.any(Number),
               send: expect.any(Number),
-              ssl: -1,
+              ssl: expect.any(Number),
               wait: expect.any(Number)
             },
             cache: {
