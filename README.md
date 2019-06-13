@@ -107,11 +107,11 @@ const har = createHarLog(entries);
 
 ### …with Isomorphic Fetch
 
-When using “universal” libraries like [isomorphic-fetch][] or [isomorphic-unfetch][],
-make sure you only import this library and wrap the Fetch instance on the
-server. Not only does this library require built-in Node modules, but it’s
-unnecessary in the browser anyway, since you can already spy on requests (and
-export HAR logs) via the Network tab.
+When using “universal” libraries like [cross-fetch][], [isomorphic-fetch][], or
+[isomorphic-unfetch][], **make sure you only import this library and wrap the
+Fetch instance on the server.** Not only does this library require built-in Node
+modules, but it’s unnecessary in the browser anyway, since you can already spy
+on requests (and export HAR logs) via the Network tab.
 
 The following example assumes your bundler (e.g. webpack) is configured to strip
 out conditional branches based on `process.browser`.
@@ -211,6 +211,7 @@ key timestamps and metadata like the HTTP version.
 [fetch]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API
 [node-fetch]: https://github.com/bitinn/node-fetch
 [har]: http://www.softwareishard.com/blog/har-12-spec/
+[cross-fetch]: https://github.com/lquixada/cross-fetch
 [isomorphic-fetch]: https://github.com/matthew-andrews/isomorphic-fetch
 [isomorphic-unfetch]: https://github.com/developit/unfetch
 [npm]: https://www.npmjs.com/package/node-fetch-har
