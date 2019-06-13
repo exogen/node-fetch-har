@@ -15,9 +15,10 @@
   ],
   "main": "index.js",
   "scripts": {
-    "lint": "eslint index.js test.js",
+    "lint": "eslint index.js test",
     "start": "cd demo && yarn start",
     "test": "yarn run lint && yarn test:coverage",
+    "test:ci": "yarn test:coverage --verbose --coverageReporters=text-lcov",
     "test:coverage": "jest --coverage",
     "test:only": "jest"
   },
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "coveralls": "^3.0.4",
+    "cross-fetch": "^3.0.4",
     "eslint": "^5.16.0",
     "isomorphic-fetch": "^2.2.1",
     "isomorphic-unfetch": "^3.0.0",
