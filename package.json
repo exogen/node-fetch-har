@@ -31,6 +31,7 @@
     "set-cookie-parser": "^2.3.5"
   },
   "devDependencies": {
+    "agentkeepalive": "^4.0.2",
     "coveralls": "^3.0.4",
     "cross-fetch": "^3.0.4",
     "eslint": "^5.16.0",

@@ -1,5 +1,10 @@
 import baseFetch from "isomorphic-unfetch";
+import { HttpsAgent } from "agentkeepalive";
 import Link from "next/link";
+
+// Supports custom agents!
+// This is not required but is for demonstration purposes.
+const httpsAgent = new HttpsAgent({});
 
 /**
  * Return a `fetch` function and a HAR log that will collect any entries
@@ -24,9 +29,10 @@ DemoPage.getInitialProps = async ctx => {
   // to all pages.
   const [fetch, harData] = createFetch({ title: "Demo Page" });
 
-  await fetch("https://httpstat.us/200");
+  await fetch("https://httpstat.us/200", { agent: httpsAgent });
 
   await fetch("https://graphbrainz.herokuapp.com/", {
+    agent: httpsAgent,
     method: "POST",
     headers: {
       "Content-Type": "application/json"
