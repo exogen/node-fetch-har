@@ -2,16 +2,16 @@ import baseFetch from "isomorphic-unfetch";
 import Link from "next/link";
 
 /**
- * Return a `fetch` implementation and a function that will return the full HAR
- * log containing any entries generated up to that point. In the browser, we
- * skip loading `node-fetch-har` completely, because it's meant to apply to
- * `node-fetch` specifically, and we already have the Network tab available in
- * the browser anyway!
+ * Return a `fetch` function and a HAR log that will collect any entries
+ * created by calling it. In the browser, we skip loading `node-fetch-har`
+ * completely, because it's meant to apply to `node-fetch` specifically - so
+ * the base `fetch` will not be wrapped, and the HAR log will be null.
  */
 function createFetch(pageInfo) {
   if (process.browser) {
     return [baseFetch, null];
   } else {
+    // Import `node-fetch-har` here.
     const { withHar, createHarLog } = require("../..");
     const har = createHarLog([], pageInfo);
     const fetch = withHar(baseFetch, { har });
