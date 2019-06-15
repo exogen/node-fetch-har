@@ -154,6 +154,14 @@ Additionally, `params` will only be populated if the `Content-Type` is exactly
 
 There may be limited support for exotic request body encodings.
 
+### Custom Agent
+
+This library works by using the custom `agent` option supported by `node-fetch`.
+However, it should still work if you pass your own custom `agent` as well. The
+provided agent instance will have its `addRequest` method instrumented with the
+necessary HAR tracking behavior. This behavior will be skipped if the request
+does not originate from a Fetch instance returned by `withHar`.
+
 ### Page Info
 
 The second argument to `createHarLog` allows you to add some initial page info:

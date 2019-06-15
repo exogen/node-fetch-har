@@ -11,6 +11,7 @@ const {
 } = require("./package.json");
 
 const headerName = "x-har-request-id";
+const harEntryMap = new Map();
 
 function getDuration(a, b) {
   const seconds = b[0] - a[0];
@@ -18,9 +19,9 @@ function getDuration(a, b) {
   return seconds * 1000 + nanoseconds / 1e6;
 }
 
-function handleRequest(harEntryMap, request, options) {
+function handleRequest(request, options) {
   if (!options || typeof options !== "object") {
-    throw new Error("Unsupported Node.js Agent implementation");
+    return;
   }
 
   const headers = options.headers || {};
@@ -306,17 +307,34 @@ function buildResponseCookies(headers) {
   return cookies;
 }
 
+/**
+ * Instrument an existing Agent instance. This overrides the instance's
+ * `addRequest` method. It should be fine to continue using for requests made
+ * without `withHar` - if the request doesn't have our `x-har-request-id`
+ * header, it won't do anything extra.
+ */
+function instrumentAgentInstance(agent) {
+  const { addRequest: originalAddRequest } = agent;
+  if (!originalAddRequest.isHarEnabled) {
+    agent.addRequest = function addRequest(request, ...args) {
+      handleRequest(request, ...args);
+      return originalAddRequest.call(this, request, ...args);
+    };
+    agent.addRequest.isHarEnabled = true;
+  }
+}
+
 function createAgentClass(BaseAgent) {
   class HarAgent extends BaseAgent {
-    constructor({ harEntryMap, ...options } = {}, ...args) {
-      super(options, ...args);
-      this.harEntryMap = harEntryMap;
+    constructor(...args) {
+      super(...args);
+      this.addRequest.isHarEnabled = true;
     }
 
     // This method is undocumented in the Node.js Agent docs. But every custom
     // agent implementation out there uses it, so...
     addRequest(request, ...args) {
-      handleRequest(this.harEntryMap, request, ...args);
+      handleRequest(request, ...args);
       return super.addRequest(request, ...args);
     }
   }
@@ -326,6 +344,10 @@ function createAgentClass(BaseAgent) {
 
 const HarHttpAgent = createAgentClass(http.Agent);
 const HarHttpsAgent = createAgentClass(https.Agent);
+
+// Shared agent instances.
+let globalHttpAgent;
+let globalHttpsAgent;
 
 function getInputUrl(input) {
   // Support URL or Request object.
@@ -351,30 +373,39 @@ function addHeaders(oldHeaders, newHeaders) {
   }
 }
 
+function getAgent(input, options) {
+  if (options.agent) {
+    if (typeof options.agent === "function") {
+      return function(...args) {
+        const agent = options.agent.call(this, ...args);
+        if (agent) {
+          instrumentAgentInstance(agent);
+          return agent;
+        }
+        return getGlobalAgent(input);
+      };
+    }
+    instrumentAgentInstance(options.agent);
+    return options.agent;
+  }
+  return getGlobalAgent(input);
+}
+
+function getGlobalAgent(input) {
+  const url = getInputUrl(input);
+  if (url.protocol === "http:") {
+    if (!globalHttpAgent) {
+      globalHttpAgent = new HarHttpAgent();
+    }
+    return globalHttpAgent;
+  }
+  if (!globalHttpsAgent) {
+    globalHttpsAgent = new HarHttpsAgent();
+  }
+  return globalHttpsAgent;
+}
+
 function withHar(baseFetch, defaults = {}) {
-  // Ideally we could just attach the generated entry data to the request
-  // directly, like via a header. An ideal place would be in a header, but the
-  // headers are already processed by the time the response is finished, so we
-  // can't add it there.
-  //
-  // We could also give each request its own Agent instance that knows how to
-  // populate an entry for each given request, but it seems expensive to
-  // create new one for every single request.
-  //
-  // So instead, we generate an ID for each request and attach it to a request
-  // header. The agent then adds the entry data to the Map above using the ID
-  // as a key.
-
-  // Undocumented option just for testing.
-  const harEntryMap = defaults.harEntryMap || new Map();
-
-  let httpAgent = new HarHttpAgent({ harEntryMap });
-  let httpsAgent = new HarHttpsAgent({ harEntryMap });
-
-  const getAgent = url => {
-    return url.protocol === "http:" ? httpAgent : httpsAgent;
-  };
-
   return function fetch(input, options = {}) {
     const {
       har = defaults.har,
@@ -386,14 +417,25 @@ function withHar(baseFetch, defaults = {}) {
       return baseFetch(input, options);
     }
 
+    // Ideally we could just attach the generated entry data to the request
+    // directly, like via a header. An ideal place would be in a header, but the
+    // headers are already processed by the time the response is finished, so we
+    // can't add it there.
+    //
+    // We could also give each request its own Agent instance that knows how to
+    // populate an entry for each given request, but it seems expensive to
+    // create new one for every single request.
+    //
+    // So instead, we generate an ID for each request and attach it to a request
+    // header. The agent then adds the entry data to `harEntryMap` using the ID
+    // as a key.
     const requestId = generateId();
-    const url = getInputUrl(input);
 
     options = Object.assign({}, options, {
       headers: addHeaders(options.headers, { [headerName]: requestId }),
       // node-fetch 2.x supports a function here, but 1.x does not. So parse
       // the URL and implement protocol-switching ourselves.
-      agent: getAgent(url)
+      agent: getAgent(input, options)
     });
 
     return baseFetch(input, options).then(
@@ -522,6 +564,8 @@ function withHar(baseFetch, defaults = {}) {
     );
   };
 }
+
+withHar.harEntryMap = harEntryMap;
 
 function createHarLog(entries = [], pageInfo = {}) {
   return {
