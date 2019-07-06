@@ -45,6 +45,7 @@ function defineTests(packageName) {
         );
         expect(response.harEntry).toEqual({
           _timestamps: expect.any(Object),
+          _resourceType: "fetch",
           startedDateTime: expect.stringMatching(
             /^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+Z$/
           ),
