@@ -49,6 +49,7 @@ function handleRequest(request, options) {
     _timestamps: {
       start: startTime
     },
+    _resourceType: "fetch",
     startedDateTime: new Date(now).toISOString(),
     cache: {
       beforeRequest: null,
