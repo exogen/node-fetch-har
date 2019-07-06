@@ -15,10 +15,11 @@
   ],
   "main": "index.js",
   "scripts": {
+    "coveralls": "coveralls < ./coverage/lcov.info",
     "lint": "eslint index.js test",
     "start": "cd demo && yarn start",
     "test": "yarn run lint && yarn test:coverage",
-    "test:ci": "yarn test:coverage --verbose --coverageReporters=text-lcov",
+    "test:ci": "yarn test:coverage --verbose && yarn coveralls",
     "test:coverage": "jest --coverage",
     "test:only": "jest"
   },
