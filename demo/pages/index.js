@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import baseFetch from "isomorphic-unfetch";
 import { HttpsAgent } from "agentkeepalive";
 import Link from "next/link";
@@ -137,14 +138,27 @@ fragment TypeRef on __Type {
   return { harData };
 };
 
+function useHarUrl(har) {
+  const [downloadUrl, setDownloadUrl] = useState(null);
+
+  useEffect(
+    () => {
+      if (typeof URL !== "undefined" && URL.createObjectURL) {
+        const blob = new Blob([JSON.stringify(har)], {
+          type: "data:application/json;charset=utf-8"
+        });
+        const objectUrl = URL.createObjectURL(blob);
+        setDownloadUrl(objectUrl);
+      }
+    },
+    [har]
+  );
+
+  return downloadUrl;
+}
+
 export default function DemoPage({ harData }) {
-  let harUrl;
-  if (harData) {
-    const harString = JSON.stringify(harData);
-    harUrl = `data:application/json;charset=utf-8,${encodeURIComponent(
-      harString
-    )}`;
-  }
+  const harUrl = useHarUrl(harData);
   return (
     <main>
       {harUrl ? (
