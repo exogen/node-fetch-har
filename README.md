@@ -12,17 +12,20 @@ what’s happening on the server.
 
 ## Status
 
-🧪 **EXPERIMENTAL**
+**STABLE**
 
-Please test thoroughly to make sure it works for your use case.
+Due to the wide variety seen in HTTP requests, please test thoroughly with your
+application and [file an issue](https://github.com/exogen/node-fetch-har/issues)
+if you find any problems.
 
 ## Warning
 
-⚠️ **HAR files can contain sensitive information like cookies or passwords.** Since
-this library is for capturing what happens on the server, this is especially
-important because it is information that users can’t normally access in their
-own browser. Be careful about sharing this data. If you provide a way to expose
-it, ensure it is only enabled for superusers or in secure environments.
+⚠️ **HAR files can contain sensitive information like cookies or passwords.**
+Since this library is for capturing what happens on the server, this is
+especially important because it is information that users can’t normally acces
+in their own browser. Be careful about sharing this data. If you provide a way
+to expose it, ensure it is only enabled for superusers or in secure
+environments.
 
 ## Usage
 
