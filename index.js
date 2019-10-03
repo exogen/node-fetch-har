@@ -140,24 +140,37 @@ function handleRequest(request, options) {
     return _end.call(this, ...args);
   };
 
+  let removeSocketListeners;
+
   request.on("socket", socket => {
     entry._timestamps.socket = process.hrtime();
 
-    socket.on("lookup", () => {
+    const onLookup = () => {
       entry._timestamps.lookup = process.hrtime();
-    });
+    };
 
-    socket.on("connect", () => {
+    const onConnect = () => {
       entry._timestamps.connect = process.hrtime();
-    });
+    };
 
-    socket.on("secureConnect", () => {
+    const onSecureConnect = () => {
       entry._timestamps.secureConnect = process.hrtime();
-    });
+    };
+
+    socket.once("lookup", onLookup);
+    socket.once("connect", onConnect);
+    socket.once("secureConnect", onSecureConnect);
+
+    removeSocketListeners = () => {
+      socket.off("lookup", onLookup);
+      socket.off("connect", onConnect);
+      socket.off("secureConnect", onSecureConnect);
+    };
   });
 
   request.on("finish", () => {
     entry._timestamps.sent = process.hrtime();
+    removeSocketListeners();
   });
 
   request.on("response", response => {

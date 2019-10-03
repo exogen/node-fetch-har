@@ -141,18 +141,15 @@ fragment TypeRef on __Type {
 function useHarUrl(har) {
   const [downloadUrl, setDownloadUrl] = useState(null);
 
-  useEffect(
-    () => {
-      if (typeof URL !== "undefined" && URL.createObjectURL) {
-        const blob = new Blob([JSON.stringify(har)], {
-          type: "data:application/json;charset=utf-8"
-        });
-        const objectUrl = URL.createObjectURL(blob);
-        setDownloadUrl(objectUrl);
-      }
-    },
-    [har]
-  );
+  useEffect(() => {
+    if (typeof URL !== "undefined" && URL.createObjectURL) {
+      const blob = new Blob([JSON.stringify(har)], {
+        type: "data:application/json;charset=utf-8"
+      });
+      const objectUrl = URL.createObjectURL(blob);
+      setDownloadUrl(objectUrl);
+    }
+  }, [har]);
 
   return downloadUrl;
 }
