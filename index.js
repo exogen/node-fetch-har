@@ -162,9 +162,9 @@ function handleRequest(request, options) {
     socket.once("secureConnect", onSecureConnect);
 
     removeSocketListeners = () => {
-      socket.off("lookup", onLookup);
-      socket.off("connect", onConnect);
-      socket.off("secureConnect", onSecureConnect);
+      socket.removeListener("lookup", onLookup);
+      socket.removeListener("connect", onConnect);
+      socket.removeListener("secureConnect", onSecureConnect);
     };
   });
 
