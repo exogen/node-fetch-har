@@ -8,6 +8,8 @@ A [Fetch API][fetch] wrapper that records [HAR logs][har] for server requests
 made with [node-fetch][]. You can then expose this data to get visibility into
 what’s happening on the server.
 
+**See also the companion project for Next.js integration, [next-fetch-har](https://github.com/exogen/next-fetch-har).**
+
 ![Demo](./demo.gif)
 
 ## Status
