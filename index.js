@@ -25,7 +25,9 @@ function handleRequest(request, options) {
   }
 
   const headers = options.headers || {};
-  const requestId = headers[headerName] ? headers[headerName][0] : null;
+  const requestId = headers[headerName] 
+    ? Array.isArray(headers[headerName]) ? headers[headerName][0] : headers[headerName]
+    : null;
 
   if (!requestId) {
     return;
